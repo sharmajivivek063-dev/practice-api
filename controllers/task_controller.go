@@ -2,13 +2,13 @@ package controllers
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
+	"practice-api/connection"
+	"practice-api/models"
 	"strconv"
 	"strings"
 	"time"
-
-	"practice-api/connection"
-	"practice-api/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -757,38 +757,38 @@ func GetTaskStats(c *gin.Context) {
 
 	// 3. Execute aggregate SQL query
 	query := `
-		SELECT
-			COUNT(*) AS total_tasks,
+    SELECT
+        COUNT(*),
 
-			COALESCE(SUM(CASE
-				WHEN status = 'pending' THEN 1
-				ELSE 0
-			END), 0) AS pending,
+        COALESCE(SUM(CASE
+            WHEN status = 'pending' THEN 1
+            ELSE 0
+        END), 0),
 
-			COALESCE(SUM(CASE
-				WHEN status = 'in_progress' THEN 1
-				ELSE 0
-			END), 0) AS in_progress,
+        COALESCE(SUM(CASE
+            WHEN status = 'in_progress' THEN 1
+            ELSE 0
+        END), 0),
 
-			COALESCE(SUM(CASE
-				WHEN status = 'completed' THEN 1
-				ELSE 0
-			END), 0) AS completed,
+        COALESCE(SUM(CASE
+            WHEN status = 'completed' THEN 1
+            ELSE 0
+        END), 0),
 
-			COALESCE(SUM(CASE
-				WHEN priority = 'high' THEN 1
-				ELSE 0
-			END), 0) AS high_priority,
+        COALESCE(SUM(CASE
+            WHEN priority = 'high' THEN 1
+            ELSE 0
+        END), 0),
 
-			COALESCE(SUM(CASE
-				WHEN due_date < UTC_DATE()
-				AND status != 'completed' THEN 1
-				ELSE 0
-			END), 0) AS overdue
+        COALESCE(SUM(CASE
+            WHEN due_date < CURDATE()
+            AND status != 'completed' THEN 1
+            ELSE 0
+        END), 0)
 
-		FROM tasks
-		WHERE user_id = ?
-	`
+    FROM tasks
+    WHERE user_id = ?
+`
 
 	err := connection.DB.QueryRow(query, userID).Scan(
 		&stats.TotalTasks,
@@ -798,8 +798,8 @@ func GetTaskStats(c *gin.Context) {
 		&stats.HighPriority,
 		&stats.Overdue,
 	)
-
 	if err != nil {
+		log.Println("GetTaskStats database error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "Failed to fetch task statistics",
@@ -807,9 +807,12 @@ func GetTaskStats(c *gin.Context) {
 		return
 	}
 
+	log.Println("Task stats:", stats)
+
 	// 4. Return statistics
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    stats,
 	})
+
 }

@@ -35,7 +35,7 @@ func ConnectDB() {
 		panic(err)
 	}
 
-	DB = db
+	DB = db   //DB variable contains the database handle
 
 	fmt.Println("MySQL Connected Successfully!")
 }
